@@ -9,7 +9,7 @@
 int main(void)
 {
      FILE *fp;
-    char file_read_node[6826] = "result.dat",
+    char file_read_node[6826] = "result3.dat",
          file_read_volume[35262] = "element.dat";
          //file_read_surface[234] = "roundbar_element_surf.dat";
 
@@ -85,7 +85,7 @@ int main(void)
     vtkSmartPointer<vtkXMLUnstructuredGridWriter>
     ::New();
     Writer->SetInputData(Grid);
-    Writer->SetFileName("roundbar_result.vtu");
+    Writer->SetFileName("roundbar_result3.vtu");
     Writer->SetCompressorTypeToNone();
     Writer->SetDataModeToAscii();
     Writer->Write();

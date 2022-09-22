@@ -19,8 +19,8 @@ typedef Matrix<double,6826*3,1> VectorNd;
 
 
 const double mu = 0.3,  //[-]
-             E = 205000.0, //[N/mm^2]
-             F = 10000.0, //[N]
+             E = 205000000000.0, //[N/m^2] //iron
+             F = 10000000.0, //[N]
              W_tet = 1.0/4.0,
              W_tr = 1.0/3.0;
 
@@ -152,6 +152,38 @@ int main()
             }
         }
     }
+    //boundary condition
+    for(int i = 0; i<=107; i++){
+        Ka.at(i).at(i) = 1.0;
+        for(int j = 0; j<3*N; j++){
+             if( i == j){
+             }
+             else{
+                Ka.at(i).at(j) = 0.0;
+             }
+        }
+    }
+    for(int i = N; i<=N+107; i++){
+        Ka.at(i).at(i) = 1.0;
+        for(int j = 0; j<3*N; j++){
+             if( i == j){
+             }
+             else{
+                Ka.at(i).at(j) = 0.0;
+             }
+        }
+    }
+    for(int i = 2*N; i<=2*N+107; i++){
+        Ka.at(i).at(i) = 1.0;
+        for(int j = 0; j<3*N; j++){
+             if( i == j){
+             }
+             else{
+                Ka.at(i).at(j) = 0.0;
+             }
+        }
+    }
+
     vector<T> tripletVec_K;
     for(int i = 0; i<3*N; i++){
         for(int j = 0; j<3*N; j++){
@@ -160,38 +192,6 @@ int main()
             }
         }
     }
-    //boundary condition
-    for(int i = 0; i<=107; i++){
-        tripletVec_K.push_back( T(i,i,1.0) );
-        for(int j = 0; j<3*N; j++){
-             if( i == j){
-             }
-             else{
-                tripletVec_K.push_back( T(i,j,0) );
-             }
-        }
-    }
-    for(int i = N; i<=N+107; i++){
-        tripletVec_K.push_back( T(i,i,1.0) );
-        for(int j = 0; j<3*N; j++){
-             if( i == j){
-             }
-             else{
-                tripletVec_K.push_back( T(i,j,0) );
-             }
-        }
-    }
-    for(int i = 2*N; i<=2*N+107; i++){
-        tripletVec_K.push_back( T(i,i,1.0) );
-        for(int j = 0; j<3*N; j++){
-             if( i == j){
-             }
-             else{
-                tripletVec_K.push_back( T(i,j,0) );
-             }
-        }
-    }
-
     K.setFromTriplets(tripletVec_K.begin(), tripletVec_K.end());
 
     //creating G
@@ -279,9 +279,9 @@ int main()
     
     Gt = G*t;
     for(int i = 0; i<=107; i++){
-        Gt(i,0) = 0;
-        Gt(i+N,0) = 0;
-        Gt(i+2*N,0) = 0;
+        Gt(i,0) = 0.0;
+        Gt(i+N,0) = 0.0;
+        Gt(i+2*N,0) = 0.0;
     }
 
     //displacement
@@ -291,38 +291,25 @@ int main()
 
 
 
-    /*ofstream fout ("out.dat");
-    if(fout.fail()){  
-        cout << "出力ファイルをオープンできません" << endl;
-    }
-    fout<< u <<endl;*/
-    
-   /*for(int i = 0; i<V; i++){
-            if(V_1[i] == 1){
-            cout<< 1 <<endl;
-            }
-    }*/
-
-    double x_result[N], y_result[N], z_result[N];
-    for(int i = 0; i<N*3; i++){
-        if( i < N ){
-            x_result[i] = x[i] + u(i,0);
-        }
-        if( i >= N && i < 2*N ){
-            y_result[i-N] = y[i-N] + u(i,0);
-        }
-        if( i >= 2*N ){
-            z_result[i-2*N] = z[i-2*N] + u(i,0);
-        }
-    }
-
     ofstream fout ("out.dat");
     if(fout.fail()){  
         cout << "出力ファイルをオープンできません" << endl;
     }
-    for(int i = 0; i<N; i++){
-        fout<< x_result[i] << " " << y_result[i] << " " << z_result[i] << endl;
-    }
+    fout<< u <<endl;
+
+    /*for( int i =0; i<=107; i++){
+        for(int j=0; j<3*N; j++){
+          if( K.coeff(i,j) != 0){
+            cout<< K.coeff(i,j) << endl;
+            cout << i << " " << j << endl;
+          }
+        }
+    }*/
+    /*for(int i = 0; i<3*N; i++){
+        if( Gt(i,0) != 0){
+            cout << i << endl;
+        }
+    }*/
 
     return 0;
 
