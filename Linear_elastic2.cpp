@@ -285,13 +285,13 @@ int main()
     }
 
     //displacement
-    /*SparseLU<SparseMatrix<double>> solver;
+    SparseLU<SparseMatrix<double>> solver;
     solver.compute(K);
-    u = solver.solve(Gt);*/
+    u = solver.solve(Gt);
 
 
 
-   /* ofstream fout ("out.dat");
+    /*ofstream fout ("out.dat");
     if(fout.fail()){  
         cout << "出力ファイルをオープンできません" << endl;
     }
@@ -302,6 +302,27 @@ int main()
             cout<< 1 <<endl;
             }
     }*/
+
+    double x_result[N], y_result[N], z_result[N];
+    for(int i = 0; i<N*3; i++){
+        if( i < N ){
+            x_result[i] = x[i] + u(i,0);
+        }
+        if( i >= N && i < 2*N ){
+            y_result[i-N] = y[i-N] + u(i,0);
+        }
+        if( i >= 2*N ){
+            z_result[i-2*N] = z[i-2*N] + u(i,0);
+        }
+    }
+
+    ofstream fout ("out.dat");
+    if(fout.fail()){  
+        cout << "出力ファイルをオープンできません" << endl;
+    }
+    for(int i = 0; i<N; i++){
+        fout<< x_result[i] << " " << y_result[i] << " " << z_result[i] << endl;
+    }
 
     return 0;
 
