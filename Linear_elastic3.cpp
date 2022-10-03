@@ -25,10 +25,13 @@ const double mu = 0.3,  //[-]
              W_tet = 1.0/4.0,
              W_tr = 1.0/3.0;
 
-const double C[3][3] ={
-                        {E*(1.0-mu)/((1.0+mu)*(1.0-2.0*mu)), E*mu/((1.0+mu)*(1.0-2.0*mu)), E*mu/((1.0+mu)*(1.0-2.0*mu))},
-                        {E*mu/((1.0+mu)*(1.0-2.0*mu)), E*(1.0-mu)/((1.0+mu)*(1.0-2.0*mu)), E*mu/((1.0+mu)*(1.0-2.0*mu)),},
-                        {E*mu/((1.0+mu)*(1.0-2.0*mu)), E*mu/((1.0+mu)*(1.0-2.0*mu)), E*(1.0-mu)/((1.0+mu)*(1.0-2.0*mu)),}
+const double C[6][6] ={
+                        {E*(1.0-mu)/((1.0+mu)*(1.0-2.0*mu)), E*mu/((1.0+mu)*(1.0-2.0*mu)), E*mu/((1.0+mu)*(1.0-2.0*mu)), 0.0, 0.0, 0.0},
+                        {E*mu/((1.0+mu)*(1.0-2.0*mu)), E*(1.0-mu)/((1.0+mu)*(1.0-2.0*mu)), E*mu/((1.0+mu)*(1.0-2.0*mu)), 0.0, 0.0, 0.0},
+                        {E*mu/((1.0+mu)*(1.0-2.0*mu)), E*mu/((1.0+mu)*(1.0-2.0*mu)), E*(1.0-mu)/((1.0+mu)*(1.0-2.0*mu)), 0.0, 0.0, 0.0},
+                        {0.0, 0.0, 0.0, E/(2.0*(1.0+mu)), 0.0, 0.0},
+                        {0.0, 0.0, 0.0, 0.0, E/(2.0*(1.0+mu)), 0.0},
+                        {0.0, 0.0, 0.0, 0.0, 0.0, E/(2.0*(1.0+mu))}
                       },
              L1[3] = {0.0,0.5,0.5},
              L2[3] = {0.5,0.0,0.5},
@@ -67,7 +70,7 @@ int main()
     //creating K
     Matrix3_4d NS,Nxi;
     Matrix3d J;
-    Matrix4d ke;
+    Matrix4d ke, k44_z, k44_y, k55_x, k55_z, k66_x, k66_y;
     Matrix4_3d xe;
     vector<vector<double>> Ka(6826*3,vector<double>(6826*3));
     Vector4d Nx,Ny,Nz,N1,N2;
@@ -125,6 +128,10 @@ int main()
 
                         if(i == 0 && j == 0){
                             Ka.at(I[p]).at(I[q]) += ke(p,q);
+                            k55_x(p,q) = N1[p]*C[4][4]*N2[q]*detJ;
+                            k66_x(p,q) = N1[p]*C[5][5]*N2[q]*detJ;
+                            Ka.at(I[p]).at(I[q]) += k55_x(p,q);
+                            Ka.at(I[p]).at(I[q]) += k66_x(p,q);
                         }
                         if(i == 0 && j == 1){
                             Ka.at(I[p]).at(I[q]+N) += ke(p,q);
@@ -137,6 +144,10 @@ int main()
                         }
                         if(i == 1 && j == 1){
                             Ka.at(I[p]+N).at(I[q]+N) += ke(p,q);
+                            k44_y(p,q) = N1[p]*C[3][3]*N2[q]*detJ;
+                            k66_y(p,q) = N1[p]*C[5][5]*N2[q]*detJ;
+                            Ka.at(I[p]+N).at(I[q]+N) += k44_y(p,q);
+                            Ka.at(I[p]+N).at(I[q]+N) += k66_y(p,q);
                         }
                         if(i == 1 && j == 2){
                             Ka.at(I[p]+N).at(I[q]+2*N) += ke(p,q);
@@ -149,6 +160,10 @@ int main()
                         }
                         if(i == 2 && j == 2){
                             Ka.at(I[p]+2*N).at(I[q]+2*N) += ke(p,q);
+                            k44_z(p,q) = N1[p]*C[3][3]*N2[q]*detJ;
+                            k55_z(p,q) = N1[p]*C[4][4]*N2[q]*detJ;
+                            Ka.at(I[p]+2*N).at(I[q]+2*N) += k44_z(p,q);
+                            Ka.at(I[p]+2*N).at(I[q]+2*N) += k55_z(p,q);
                         }
                     }
                 }                
@@ -186,6 +201,26 @@ int main()
              }
         }
     }
+    /*for(int i = 108; i<=215; i++){
+        Ka.at(i).at(i) = 1.0;
+        for(int j = 0; j<3*N; j++){
+            if(i == j){
+            }
+            else{
+                Ka.at(i).at(j) = 0.0;
+            }
+        }
+    }
+    for(int i = N+108; i<=N+215; i++){
+        Ka.at(i).at(i) = 1.0;
+        for(int j = 0; j<3*N; j++){
+            if(i == j){
+            }
+            else{
+                Ka.at(i).at(j) = 0.0;
+            }
+        }
+    }*/
 
     vector<T> tripletVec_K;
     for(int i = 0; i<3*N; i++){
@@ -295,6 +330,10 @@ int main()
         Gt(i+N,0) = 0.0;
         Gt(i+2*N,0) = 0.0;
     }
+    /*for(int i = 108; i<=215; i++){
+        Gt(i,0) = 0.0;
+        Gt(i+N,0) = 0.0;
+    }*/
 
     //displacement
     SparseLU<SparseMatrix<double>> solver;
@@ -309,9 +348,9 @@ int main()
     }
     fout<< u <<endl;
 
-    /*for( int i = 0; i<107; i++){
-        for(int j= 0; j<3*N; j++){
-          if( K.coeff(i,j) != 0){
+    /*for( int i = 0; i<4; i++){
+        for(int j= 0; j<4; j++){
+          if( k44_y(i,j) > 0){
             //cout<< Ka.at(i).at(j) << endl;
             cout << i << " " << j << endl;
           }

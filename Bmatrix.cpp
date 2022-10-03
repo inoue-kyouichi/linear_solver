@@ -19,18 +19,13 @@ typedef Matrix<double,6826*3,1> VectorNd;
 
 
 const double mu = 0.3,  //[-]
-             E = 205000000000.0, //[N/m^2] //iron
+             E = 205000000000.0, //[N/m^2] //iron SS400
              //F = 10000000.0, //[N]
-             F = 100.0,
+             F = 685.0,
              W_tet = 1.0/4.0,
              W_tr = 1.0/3.0;
 
-const double C[3][3] ={
-                        {E*(1.0-mu)/((1.0+mu)*(1.0-2.0*mu)), E*mu/((1.0+mu)*(1.0-2.0*mu)), E*mu/((1.0+mu)*(1.0-2.0*mu))},
-                        {E*mu/((1.0+mu)*(1.0-2.0*mu)), E*(1.0-mu)/((1.0+mu)*(1.0-2.0*mu)), E*mu/((1.0+mu)*(1.0-2.0*mu)),},
-                        {E*mu/((1.0+mu)*(1.0-2.0*mu)), E*mu/((1.0+mu)*(1.0-2.0*mu)), E*(1.0-mu)/((1.0+mu)*(1.0-2.0*mu)),}
-                      },
-             L1[3] = {0.0,0.5,0.5},
+const double L1[3] = {0.0,0.5,0.5},
              L2[3] = {0.5,0.0,0.5},
              L3[3] = {0.5,0.5,0.0};
 
@@ -67,10 +62,9 @@ int main()
     //creating K
     Matrix3_4d NS,Nxi;
     Matrix3d J;
-    Matrix4d ke;
     Matrix4_3d xe;
+    MatrixXd B(6,12), ke(12,12), C(6,6),Bt(12,6);
     vector<vector<double>> Ka(6826*3,vector<double>(6826*3));
-    Vector4d Nx,Ny,Nz,N1,N2;
     SparseMatrix<double> K(6826*3,6826*3);
     int I[4] = {0};
     double detJ;
@@ -78,7 +72,17 @@ int main()
           -1.0, 0.0, 1.0, 0.0,
           -1.0, 0.0, 0.0, 1.0;
 
+    C <<    E*(1.0-mu)/((1.0+mu)*(1.0-2.0*mu)), E*mu/((1.0+mu)*(1.0-2.0*mu)), E*mu/((1.0+mu)*(1.0-2.0*mu)), 0.0, 0.0, 0.0,
+            E*mu/((1.0+mu)*(1.0-2.0*mu)), E*(1.0-mu)/((1.0+mu)*(1.0-2.0*mu)), E*mu/((1.0+mu)*(1.0-2.0*mu)), 0.0, 0.0, 0.0,
+            E*mu/((1.0+mu)*(1.0-2.0*mu)), E*mu/((1.0+mu)*(1.0-2.0*mu)), E*(1.0-mu)/((1.0+mu)*(1.0-2.0*mu)), 0.0, 0.0, 0.0,
+            0.0, 0.0, 0.0, E/(2.0*(1.0+mu)), 0.0, 0.0,
+            0.0, 0.0, 0.0, 0.0, E/(2.0*(1.0+mu)), 0.0,
+            0.0, 0.0, 0.0, 0.0, 0.0, E/(2.0*(1.0+mu));
+                      
     J = Matrix3d::Zero();
+    B = MatrixXd::Zero(6,12);
+    ke = MatrixXd::Zero(12,12);
+    Bt = MatrixXd::Zero(12,6);
 
     for(int k = 0; k < V; k++){
 
@@ -93,67 +97,37 @@ int main()
         FullPivLU<Matrix3d> lu(J);
         Nxi = lu.solve(NS);
 
-        for(int i = 0; i<4; i++){
-            Nx(i) = Nxi(0,i);
+        for( int i = 0; i<4; i++){
+            B(0,i) = Nxi(0,i);
+            B(1,4+i) = Nxi(1,i);
+            B(2,8+i) = Nxi(2,i);
+            B(3,4+i) = Nxi(2,i);
+            B(3,8+i) = Nxi(1,i);
+            B(4,i) = Nxi(2,i);
+            B(4,8+i) = Nxi(0,i);
+            B(5,i) = Nxi(1,i);
+            B(5,4+i) = Nxi(0,i);
         }
-        for(int i = 0; i<4; i++){
-            Ny(i) = Nxi(1,i);
-        }
-        for(int i = 0; i<4; i++){
-            Nz(i) = Nxi(2,i);
-        }
+        
+        Bt = B.transpose();
+        ke = Bt*C*B*detJ;
 
         I[0] = V_1[k]; I[1] = V_2[k]; I[2] = V_3[k]; I[3] = V_4[k];
-
-        for(int i = 0; i<3; i++){
-            switch(i){
-                case 0: N1 = Nx; break;
-                case 1: N1 = Ny; break;
-                case 2: N1 = Nz; break;
-            }
-
-            for(int j = 0; j<3; j++){
-                switch(j){
-                    case 0: N2 = Nx; break;
-                    case 1: N2 = Ny; break;
-                    case 2: N2 = Nz; break; 
-                }
-
-                for(int p = 0; p<4; p++){
-                    for(int q = 0; q<4; q++){
-                        ke(p,q) = N1[p]*C[i][j]*N2[q]*detJ;
-
-                        if(i == 0 && j == 0){
-                            Ka.at(I[p]).at(I[q]) += ke(p,q);
-                        }
-                        if(i == 0 && j == 1){
-                            Ka.at(I[p]).at(I[q]+N) += ke(p,q);
-                        }
-                        if(i == 0 && j == 2){
-                            Ka.at(I[p]).at(I[q]+2*N) += ke(p,q);
-                        }
-                        if(i == 1 && j == 0){
-                            Ka.at(I[p]+N).at(I[q]) += ke(p,q);
-                        }
-                        if(i == 1 && j == 1){
-                            Ka.at(I[p]+N).at(I[q]+N) += ke(p,q);
-                        }
-                        if(i == 1 && j == 2){
-                            Ka.at(I[p]+N).at(I[q]+2*N) += ke(p,q);
-                        }
-                        if(i == 2 && j == 0){
-                            Ka.at(I[p]+2*N).at(I[q]) += ke(p,q);
-                        }
-                        if(i == 2 && j == 1){
-                            Ka.at(I[p]+2*N).at(I[q]+N) += ke(p,q);
-                        }
-                        if(i == 2 && j == 2){
-                            Ka.at(I[p]+2*N).at(I[q]+2*N) += ke(p,q);
-                        }
-                    }
-                }                
+        
+        for( int p = 0; p<4; p++){
+            for( int q = 0; q<4; q++){
+                Ka.at(I[p]).at(I[q]) += ke(p,q); //i<4 && j<4
+                Ka.at(I[p]).at(I[q]+N) += ke(p,q+4); //i<4 && 4<=j<8
+                Ka.at(I[p]).at(I[q]+2*N) += ke(p,q+8); //i<4 && 8<=j<12
+                Ka.at(I[p]+N).at(I[q]) += ke(p+4,q); //4<=i<8 && j<4
+                Ka.at(I[p]+N).at(I[q]+N) += ke(p+4,q+4); //4<=i<8 && 4<=j<8
+                Ka.at(I[p]+N).at(I[q]+2*N) += ke(p+4,q+8);//4<=i<8 && 8<=j<12
+                Ka.at(I[p]+2*N).at(I[q]) += ke(p+8,q);//8<=i<12 && j<4
+                Ka.at(I[p]+2*N).at(I[q]+N) += ke(p+8,q+4);//8<=i<12 && 4<=j<8
+                Ka.at(I[p]+2*N).at(I[q]+2*N) += ke(p+8,q+8);//8<=i<12 && 8<=j<12
             }
         }
+            
     }
     //boundary condition
     for(int i = 0; i<=107; i++){
@@ -284,7 +258,7 @@ int main()
     t = VectorNd::Zero();
     Gt = VectorNd::Zero();
     u = VectorNd::Zero();
-    //t(213+2*N,0) = F;   //t213_z is load point
+    t(213+2*N,0) = F;   //t213_z is load point
     for(int i = 108; i<=215; i++){
         t(i+2*N,0) = F;
     }
@@ -299,9 +273,7 @@ int main()
     //displacement
     SparseLU<SparseMatrix<double>> solver;
     solver.compute(K);
-    u = solver.solve(Gt);
-
-
+    u = solver.solve(t);
 
     ofstream fout ("out.dat");
     if(fout.fail()){  
@@ -317,11 +289,12 @@ int main()
           }
         }
     }*/
-    /*for(int i = 0; i<N; i++){
-        if( detJ != 0){
-            cout << i << endl;
-        }
-    }*/
+    double sum;
+    for(int i = 108; i<=215; i++){
+        cout << Gt(i+2*N,0) << endl;
+        sum += Gt(i+2*N,0);
+    }
+    cout << sum << endl;
 
     return 0;
 

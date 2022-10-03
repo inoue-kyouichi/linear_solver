@@ -7,7 +7,7 @@ int main(){
     FILE *fp;
     char file_read_node[6826] = "node.dat",
          file_read_volume[35262] = "element.dat",
-         file_read_displacement[6826*3] = "displacement3.dat";
+         file_read_displacement[6826*3] = "displacement.dat";
 
     int N = 6826, V = 35262, D = 6826*3;
     double  x[N], y[N], z[N], d[D];
