@@ -21,7 +21,7 @@ typedef Matrix<double,6826*3,1> VectorNd;
 const double mu = 0.3,  //[-]
              E = 205000000000.0, //[N/m^2] //iron SS400
              //F = 10000000.0, //[N]
-             F = 685.0,
+             F = 74000.0,
              W_tet = 1.0/4.0,
              W_tr = 1.0/3.0;
 
@@ -62,6 +62,9 @@ int main()
     //creating K
     Matrix3_4d NS,Nxi;
     Matrix3d J;
+
+
+
     Matrix4_3d xe;
     MatrixXd B(6,12), ke(12,12), C(6,6),Bt(12,6);
     vector<vector<double>> Ka(6826*3,vector<double>(6826*3));
@@ -69,7 +72,7 @@ int main()
     int I[4] = {0};
     double detJ;
     NS << -1.0, 1.0, 0.0, 0.0,
-          -1.0, 0.0, 1.0, 0.0,
+          -1.0, .0, 1.0, 0.0,
           -1.0, 0.0, 0.0, 1.0;
 
     C <<    E*(1.0-mu)/((1.0+mu)*(1.0-2.0*mu)), E*mu/((1.0+mu)*(1.0-2.0*mu)), E*mu/((1.0+mu)*(1.0-2.0*mu)), 0.0, 0.0, 0.0,
@@ -258,7 +261,7 @@ int main()
     t = VectorNd::Zero();
     Gt = VectorNd::Zero();
     u = VectorNd::Zero();
-    t(213+2*N,0) = F;   //t213_z is load point
+    //t(213+2*N,0) = F;   //t213_z is load point
     for(int i = 108; i<=215; i++){
         t(i+2*N,0) = F;
     }
@@ -273,7 +276,7 @@ int main()
     //displacement
     SparseLU<SparseMatrix<double>> solver;
     solver.compute(K);
-    u = solver.solve(t);
+    u = solver.solve(Gt);
 
     ofstream fout ("out.dat");
     if(fout.fail()){  

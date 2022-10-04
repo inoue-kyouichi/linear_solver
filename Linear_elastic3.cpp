@@ -70,7 +70,7 @@ int main()
     //creating K
     Matrix3_4d NS,Nxi;
     Matrix3d J;
-    Matrix4d ke, k44_z, k44_y, k55_x, k55_z, k66_x, k66_y;
+    Matrix4d ke;
     Matrix4_3d xe;
     vector<vector<double>> Ka(6826*3,vector<double>(6826*3));
     Vector4d Nx,Ny,Nz,N1,N2;
@@ -128,10 +128,6 @@ int main()
 
                         if(i == 0 && j == 0){
                             Ka.at(I[p]).at(I[q]) += ke(p,q);
-                            k55_x(p,q) = N1[p]*C[4][4]*N2[q]*detJ;
-                            k66_x(p,q) = N1[p]*C[5][5]*N2[q]*detJ;
-                            Ka.at(I[p]).at(I[q]) += k55_x(p,q);
-                            Ka.at(I[p]).at(I[q]) += k66_x(p,q);
                         }
                         if(i == 0 && j == 1){
                             Ka.at(I[p]).at(I[q]+N) += ke(p,q);
@@ -144,10 +140,6 @@ int main()
                         }
                         if(i == 1 && j == 1){
                             Ka.at(I[p]+N).at(I[q]+N) += ke(p,q);
-                            k44_y(p,q) = N1[p]*C[3][3]*N2[q]*detJ;
-                            k66_y(p,q) = N1[p]*C[5][5]*N2[q]*detJ;
-                            Ka.at(I[p]+N).at(I[q]+N) += k44_y(p,q);
-                            Ka.at(I[p]+N).at(I[q]+N) += k66_y(p,q);
                         }
                         if(i == 1 && j == 2){
                             Ka.at(I[p]+N).at(I[q]+2*N) += ke(p,q);
@@ -160,10 +152,6 @@ int main()
                         }
                         if(i == 2 && j == 2){
                             Ka.at(I[p]+2*N).at(I[q]+2*N) += ke(p,q);
-                            k44_z(p,q) = N1[p]*C[3][3]*N2[q]*detJ;
-                            k55_z(p,q) = N1[p]*C[4][4]*N2[q]*detJ;
-                            Ka.at(I[p]+2*N).at(I[q]+2*N) += k44_z(p,q);
-                            Ka.at(I[p]+2*N).at(I[q]+2*N) += k55_z(p,q);
                         }
                     }
                 }                

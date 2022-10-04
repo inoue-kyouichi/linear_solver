@@ -21,7 +21,7 @@ typedef Matrix<double,6826*3,1> VectorNd;
 const double mu = 0.3,  //[-]
              E = 205000000000.0, //[N/m^2] //iron
              //F = 10000000.0, //[N]
-             F = 100.0,
+             F = 100000.0,
              W_tet = 1.0/4.0,
              W_tr = 1.0/3.0;
 
@@ -322,6 +322,13 @@ int main()
             cout << i << endl;
         }
     }*/
+
+    double sum;
+    for(int i = 108; i<=215; i++){
+        cout << Gt(i+2*N,0) << endl;
+        sum += Gt(i+2*N,0);
+    }
+    cout << sum << endl;
 
     return 0;
 
