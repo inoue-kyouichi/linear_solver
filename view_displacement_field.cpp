@@ -12,9 +12,9 @@
 int main(void)
 {
     FILE *fp;
-    char file_read_node[6826] = "result.dat",
+    char file_read_node[6826] = "b.dat",
          file_read_volume[35262] = "element.dat",
-         file_read_displacement[6826*3] = "displacement.dat";
+         file_read_displacement[6826*3] = "a.dat";
     int N = 6826, E = 35262, S = 234, D = 6826*3;
     double x[N], y[N], z[N],D_1[D];
     int    E_1[E], E_2[E], E_3[E], E_4[E],

@@ -1,5 +1,5 @@
-#include <iostream>
-#include <fstream>
+//#include <iostream>
+//#include <fstream>
 #include <Eigen/Core>
 #include <Eigen/LU>
 #include <Eigen/Geometry>
@@ -7,29 +7,71 @@
 #include <Eigen/SparseCore>
 #include <Eigen/SparseLU>
 #include <bits/stdc++.h>
+#include <cmath>
 
 using namespace Eigen;
 using namespace std;
 
-typedef Triplet<double> T;
+typedef Triplet<double, int64_t> T;
 typedef Matrix<double,3,4> Matrix3_4d;
 typedef Matrix<double,4,3> Matrix4_3d;
 typedef Matrix<double,6826*3,1> VectorNd;
 
-
-const double mu = 0.3,  //[-]
+const double nu = 0.3,  //[-]
              E = 205000000000.0, //[N/m^2] //iron
              Yp = 235000000.0, //[Pa] yield point
              W_tet = 1.0/4.0,
              W_tr = 1.0/3.0,
              r = 0.01, //[m]
              A = M_PI*pow(r,2.0),
-             L = 0.1, //[m]
-             st = 0.00114;
+             L = 0.1; //[m]
+             //st = 0.00114;
 
 const double L1[3] = {0.0,0.5,0.5},
              L2[3] = {0.5,0.0,0.5},
              L3[3] = {0.5,0.5,0.0};
+
+void output_vtu(VectorNd F, double x[6826], double y[6826], double z[6826], int V_1[35262], int V_2[35262], int V_3[35262], int V_4[35262]) {
+    int N_NODE = 6826, N_ELEM = 35262;
+    ofstream ofs("reaction_force6.vtu");
+    ofs << "<VTKFile type=\"UnstructuredGrid\" version=\"1.0\" byte_order=\"LittleEndian\" header_type=\"UInt64\">\n";
+    ofs << "<UnstructuredGrid>\n";
+    ofs << "<Piece NumberOfPoints= \"" << N_NODE << "\" NumberOfCells= \"" << N_ELEM << "\">\n";
+    ofs << "<Points>\n";
+    ofs << "<DataArray type=\"Float64\" Name=\"Points\" NumberOfComponents=\"3\" format=\"ascii\">\n";
+    for(int i = 0; i < N_NODE; i++) {
+        ofs << x[i] << " " << y[i] << " " << z[i] << "\n";
+    }
+    ofs << "</DataArray>\n";
+    ofs << "</Points>\n";
+    ofs << "<Cells>\n";
+    ofs << "<DataArray type=\"Int64\" Name=\"connectivity\" format=\"ascii\">\n";
+    for(int i = 0; i < N_ELEM; i++) {
+        ofs << V_1[i] << " " << V_2[i] << " " << V_3[i] << " " << V_4[i] <<"\n";
+    }
+    ofs << "</DataArray>\n";
+    ofs << "<DataArray type=\"Int64\" Name=\"offsets\" format=\"ascii\">\n";
+    for(int i = 0; i < N_ELEM; i++) {
+        ofs << 4*(i+1) << "\n";
+    }
+    ofs << "</DataArray>\n";
+    ofs << "<DataArray type=\"UInt32\" Name=\"types\" format=\"ascii\">";
+    for(int i = 0; i < N_ELEM; i++) {
+        ofs << "10\n";
+    }
+    ofs << "</DataArray>\n";
+    ofs << "</Cells>\n";
+    ofs << "<PointData>\n";
+    ofs << "<DataArray type=\"Float64\" Name=\"force\" NumberOfComponents=\"3\" format=\"ascii\">\n";
+    for(int i = 0; i < N_NODE; i++) {
+        ofs << F(i,0) << " " << F(i+N_NODE,0) << " " << F(i+2*N_NODE,0) << "\n";
+    }
+    ofs << "</DataArray>\n";
+    ofs << "</PointData>\n";
+    ofs << "</Piece></UnstructuredGrid></VTKFile>";
+    ofs.close();
+    return;
+}
 
 int main()
 {
@@ -67,7 +109,7 @@ int main()
     Matrix4d ke;
     Matrix4_3d xe;
     vector<vector<double>> Ka(6826*3,vector<double>(6826*3,0.0));
-    SparseMatrix<double> K(6826*3,6826*3);
+    SparseMatrix<double> K(6826*3,6826*3), K1(6826*3,6826*3);
     int I[4] = {0};
     double detJ;
     double C[3][3][3][3] = {0.0};
@@ -75,12 +117,16 @@ int main()
           -1.0, 0.0, 1.0, 0.0,
           -1.0, 0.0, 0.0, 1.0;
 
-    C[0][0][0][0] = E*(1.0-mu)/((1.0+mu)*(1.0-2.0*mu)); C[0][0][1][1] = E*mu/((1.0+mu)*(1.0-2.0*mu)); C[0][0][2][2] = E*mu/((1.0+mu)*(1.0-2.0*mu));
-    C[1][1][0][0] = E*mu/((1.0+mu)*(1.0-2.0*mu)); C[1][1][1][1] = E*(1.0-mu)/((1.0+mu)*(1.0-2.0*mu)); C[1][1][2][2] = E*mu/((1.0+mu)*(1.0-2.0*mu));
-    C[2][2][0][0] = E*mu/((1.0+mu)*(1.0-2.0*mu)); C[2][2][1][1] = E*mu/((1.0+mu)*(1.0-2.0*mu)); C[2][2][2][2] = E*(1.0-mu)/((1.0+mu)*(1.0-2.0*mu));
-    C[0][1][0][1] = E/(2.0*(1.0+mu)); C[0][2][0][2] = E/(2.0*(1.0+mu)); C[1][2][1][2] = E/(2.0*(1.0+mu));
+    C[0][0][0][0] = E*(1.0-nu)/((1.0+nu)*(1.0-2.0*nu)); C[0][0][1][1] = E*nu/((1.0+nu)*(1.0-2.0*nu)); C[0][0][2][2] = E*nu/((1.0+nu)*(1.0-2.0*nu));
+    C[1][1][0][0] = E*nu/((1.0+nu)*(1.0-2.0*nu)); C[1][1][1][1] = E*(1.0-nu)/((1.0+nu)*(1.0-2.0*nu)); C[1][1][2][2] = E*nu/((1.0+nu)*(1.0-2.0*nu));
+    C[2][2][0][0] = E*nu/((1.0+nu)*(1.0-2.0*nu)); C[2][2][1][1] = E*nu/((1.0+nu)*(1.0-2.0*nu)); C[2][2][2][2] = E*(1.0-nu)/((1.0+nu)*(1.0-2.0*nu));
+    C[0][1][0][1] = E/(2.0*(1.0+nu)); C[0][2][0][2] = E/(2.0*(1.0+nu)); C[1][2][1][2] = E/(2.0*(1.0+nu));
+    C[1][0][0][1] = E/(2.0*(1.0+nu)); C[0][1][1][0] = E/(2.0*(1.0+nu));
+    C[2][0][0][2] = E/(2.0*(1.0+nu)); C[0][2][2][0] = E/(2.0*(1.0+nu));
+    C[2][1][1][2] = E/(2.0*(1.0+nu)); C[1][2][2][1] = E/(2.0*(1.0+nu));
+    C[1][0][1][0] = E/(2.0*(1.0+nu)); C[2][0][2][0] = E/(2.0*(1.0+nu)); C[2][1][2][1] = E/(2.0*(1.0+nu));
 
-    J = Matrix3d::Zero();
+    J = Matrix3d::Zero(); 
 
     for(int t = 0; t < V; t++){
 
@@ -105,7 +151,7 @@ int main()
                     for(int q = 0; q<4; q++){
                         for(int j = 0; j<3; j++){
                             for(int l = 0; l<3; l++){
-                                ke(p,q) += Nxi(j,p)*C[i][j][k][l]*Nxi(l,q)*detJ;
+                                ke(p,q) += Nxi(j,p)*C[i][j][k][l]*Nxi(l,q)*detJ/6.0;
                             }
                         }
                         if(i == 0 && k == 0){
@@ -140,8 +186,19 @@ int main()
             }
         }
     }
+
+    vector<T> tripletVec_K1;
+    for(int i = 0; i<3*N; i++){
+        for(int j = 0; j<3*N; j++){
+            if( Ka.at(i).at(j) != 0 ){
+                tripletVec_K1.push_back( T(i,j,Ka.at(i).at(j)) );
+            }
+        }
+    }
+    K1.setFromTriplets(tripletVec_K1.begin(), tripletVec_K1.end());
+
     //boundary condition
-    /*for(int i = 0; i<=107; i++){
+    for(int i = 0; i<108; i++){
         Ka.at(i).at(i) = 1.0;
         for(int j = 0; j<3*N; j++){
              if( i == j){
@@ -151,7 +208,7 @@ int main()
              }
         }
     }
-    for(int i = N; i<=N+107; i++){
+    for(int i = N; i<N+108; i++){
         Ka.at(i).at(i) = 1.0;
         for(int j = 0; j<3*N; j++){
              if( i == j){
@@ -161,7 +218,27 @@ int main()
              }
         }
     }
-    for(int i = 2*N; i<=2*N+107; i++){
+    for(int i = 2*N; i<2*N+108; i++){
+        Ka.at(i).at(i) = 1.0;
+        for(int j = 0; j<3*N; j++){
+             if( i == j){
+             }
+             else{
+                Ka.at(i).at(j) = 0.0;
+             }
+        }
+    }
+    for(int i = 2*N+108; i<=2*N+215; i++){
+        Ka.at(i).at(i) = 1.0;
+        for(int j = 0; j<3*N; j++){
+             if( i == j){
+             }
+             else{
+                Ka.at(i).at(j) = 0.0;
+             }
+        }
+    }
+    /*for(int i = 108; i<=215; i++){
         Ka.at(i).at(i) = 1.0;
         for(int j = 0; j<3*N; j++){
              if( i == j){
@@ -302,47 +379,44 @@ int main()
     fout<< u <<endl;*/
 
     //reaction force
-    //ofstream fout ("out.dat");
-    //double sum1, sum2, st = 0.0;
+    ofstream fout ("out.dat");
+    double sum1, sum2, st = 0.0;
     VectorNd u,F;
-    //for(int j = 0; j<58 ;j++){
-        //sum1 = 0.0; sum2 = 0.0;
+    for(int j = 0; j<58 ;j++){
+        sum1 = 0.0; sum2 = 0.0;
         u = VectorNd::Zero();
         F = VectorNd::Zero();
-        for(int i = 0; i<N; i++){
-            u(i,0) = -mu*st*x[i];
-            u(i+N,0) = -mu*st*y[i];
-            u(i+2*N,0) = st*z[i];
-        }
+        
         for(int i = 0; i<108; i++){
-            u(i,0) = 0.0;
-            u(i+N,0) = 0.0;
-            u(i+2*N,0) = 0.0;
+            F(i,0) = 0.0;
+            F(i+N,0) = 0.0;
+            F(i+2*N,0) = 0.0;
         }
         for(int i = 108; i<=215; i++){
-            u(i+2*N,0) = st*L;
+            F(i+2*N,0) = st*L;
         }
 
+        SparseLU<SparseMatrix<double>> solver;
+        solver.compute(K);
+        u = solver.solve(F);
 
-        F = K*u;
+        F = K1*u;
 
-        /*for(int i = 108; i<=215; i++){
+        for(int i = 108; i<=215; i++){
             sum1 += F(i+2*N,0);
         }
-        for(int i = 0; i<108; i++){
-            sum2 += F(i+2*N,0);
-        }
-        fout<<abs(sum1+sum2)<<endl;
-        st += 0.00002;*/
-    //}
+        
+        fout<<sum1<<endl;
+        st += 0.00002;
+    }
 
-    ofstream fout ("out.dat");
+    /*ofstream fout ("out.dat");
     if(fout.fail()){  
         cout << "出力ファイルをオープンできません" << endl;
     }
-    fout<< F <<endl;
+    fout<< u <<endl;*/
 
-   double sum1 = 0, sum2 = 0;
+   /*double sum1 = 0, sum2 = 0;
     for(int i = 108; i<=215; i++){
         sum1 += F(i+2*N,0);
     }
@@ -351,31 +425,11 @@ int main()
     }
     cout<<abs(sum1+sum2)<<endl;
     cout<<sum1<<endl;
-    //cout<<u(19381,0)<<endl;
+    cout<<sum2<<endl;*/
 
-   /*for(int i = 0; i<N; i++){
-        if(u(i+2*N,0) != 0){
-            cout<<i<<endl;
-        }
-    }*/
+    output_vtu(F,x,y,z,V_1,V_2,V_3,V_4);    
 
-    /*for( int i = 0; i<4; i++){
-        for(int j= 0; j<4; j++){
-          if( k44_y(i,j) > 0){
-            //cout<< Ka.at(i).at(j) << endl;
-            cout << i << " " << j << endl;
-          }
-        }
-    }*/
-    /*for(int i = 0; i<N; i++){
-        if( detJ != 0){
-            cout << i << endl;
-        }
-    }*/
-
-    
-
-    return 0;
+return 0;
 
 }
 
